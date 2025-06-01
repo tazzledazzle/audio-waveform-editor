@@ -70,10 +70,9 @@ const AudioEditor: React.FC = () => {
         try {
           wavesurferRef.current.destroy();
         } catch (error) {
-          // Ignore AbortError as it's expected during unmount
-          if (error instanceof Error && error.name !== 'AbortError') {
-            // Re-throw any other errors
-            throw error;
+          // Ignore AbortError during cleanup as it's expected
+          if (!(error instanceof Error) || error.name !== 'AbortError') {
+            console.error('Error destroying WaveSurfer instance:', error);
           }
         }
         wavesurferRef.current = null;
@@ -86,6 +85,11 @@ const AudioEditor: React.FC = () => {
     if (audioFile && wavesurferRef.current) {
       const fileURL = URL.createObjectURL(audioFile);
       wavesurferRef.current.load(fileURL);
+      
+      // Cleanup URL when done
+      return () => {
+        URL.revokeObjectURL(fileURL);
+      };
     }
   }, [audioFile]);
   
