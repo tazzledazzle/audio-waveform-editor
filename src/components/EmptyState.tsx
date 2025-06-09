@@ -1,61 +1,138 @@
 import React from 'react';
-import { Upload, Music, AudioWaveform as Waveform } from 'lucide-react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAudio } from '../contexts/AudioContext';
+import { colors } from '../styles/colors';
 
 const EmptyState: React.FC = () => {
-  const { setAudioFile } = useAudio();
-  
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      setAudioFile(files[0]);
-    }
-  };
+  const { pickAudioFile } = useAudio();
   
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8">
-      <div className="max-w-md w-full bg-dark-800 rounded-lg p-8 text-center shadow-lg">
-        <div className="mb-6 flex justify-center">
-          <div className="relative">
-            <Waveform size={64} className="text-primary-500" />
-            <Music size={24} className="text-accent-500 absolute -bottom-1 -right-1" />
-          </div>
-        </div>
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="musical-notes" size={64} color={colors.primary[500]} />
+          <Ionicons 
+            name="musical-note" 
+            size={24} 
+            color={colors.accent[500]} 
+            style={styles.smallIcon}
+          />
+        </View>
         
-        <h2 className="text-2xl font-semibold mb-2">Audio Waveform Editor</h2>
-        <p className="text-dark-300 mb-6">
+        <Text style={styles.title}>Audio Waveform Editor</Text>
+        <Text style={styles.description}>
           Upload an audio file to visualize and edit its waveform. 
           Apply effects, trim segments, and export your creation.
-        </p>
+        </Text>
         
-        <label className="btn btn-primary flex items-center justify-center space-x-2 w-full cursor-pointer">
-          <Upload size={18} />
-          <span>Select an audio file</span>
-          <input
-            type="file"
-            accept="audio/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
+        <TouchableOpacity 
+          onPress={pickAudioFile}
+          style={styles.uploadButton}
+        >
+          <Ionicons name="cloud-upload" size={18} color={colors.white} />
+          <Text style={styles.uploadButtonText}>Select an audio file</Text>
+        </TouchableOpacity>
         
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="p-3 bg-dark-700 rounded-md text-center">
-            <p className="text-xs text-dark-300">Supported formats</p>
-            <p className="text-sm font-medium">WAV, MP3, OGG</p>
-          </div>
-          <div className="p-3 bg-dark-700 rounded-md text-center">
-            <p className="text-xs text-dark-300">Effects</p>
-            <p className="text-sm font-medium">EQ, Reverb, Compression</p>
-          </div>
-          <div className="p-3 bg-dark-700 rounded-md text-center">
-            <p className="text-xs text-dark-300">Export as</p>
-            <p className="text-sm font-medium">WAV, MP3</p>
-          </div>
-        </div>
-      </div>
-    </div>
+        <View style={styles.featuresGrid}>
+          <View style={styles.featureCard}>
+            <Text style={styles.featureLabel}>Supported formats</Text>
+            <Text style={styles.featureValue}>WAV, MP3, M4A</Text>
+          </View>
+          <View style={styles.featureCard}>
+            <Text style={styles.featureLabel}>Effects</Text>
+            <Text style={styles.featureValue}>EQ, Reverb, Compression</Text>
+          </View>
+          <View style={styles.featureCard}>
+            <Text style={styles.featureLabel}>Export as</Text>
+            <Text style={styles.featureValue}>WAV, MP3</Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  content: {
+    maxWidth: 400,
+    width: '100%',
+    backgroundColor: colors.dark[800],
+    borderRadius: 8,
+    padding: 32,
+    alignItems: 'center',
+  },
+  iconContainer: {
+    position: 'relative',
+    marginBottom: 24,
+  },
+  smallIcon: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.white,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 16,
+    color: colors.dark[300],
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  uploadButton: {
+    backgroundColor: colors.primary[500],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 6,
+    width: '100%',
+    marginBottom: 24,
+    gap: 8,
+  },
+  uploadButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 16,
+  },
+  featureCard: {
+    flex: 1,
+    backgroundColor: colors.dark[700],
+    borderRadius: 6,
+    padding: 12,
+    alignItems: 'center',
+  },
+  featureLabel: {
+    fontSize: 12,
+    color: colors.dark[300],
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  featureValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.white,
+    textAlign: 'center',
+  },
+});
 
 export default EmptyState;

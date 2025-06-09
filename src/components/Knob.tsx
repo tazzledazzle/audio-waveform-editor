@@ -1,4 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import Animated, { 
+  useAnimatedGestureHandler, 
+  useAnimatedStyle, 
+  useSharedValue,
+  runOnJS
+} from 'react-native-reanimated';
+import { colors } from '../styles/colors';
 
 interface KnobProps {
   value: number;
@@ -23,84 +32,110 @@ const Knob: React.FC<KnobProps> = ({
   unit = '',
   valueDisplay
 }) => {
-  const knobRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
-  const [startValue, setStartValue] = useState(0);
+  const rotation = useSharedValue(0);
+  const [currentValue, setCurrentValue] = useState(value);
   
   // Calculate rotation angle based on value
-  const getRotation = () => {
+  const getRotation = (val: number) => {
     const range = max - min;
-    const percentage = (value - min) / range;
+    const percentage = (val - min) / range;
     return percentage * 270 - 135; // -135 to 135 degrees
   };
   
-  const rotation = getRotation();
+  React.useEffect(() => {
+    rotation.value = getRotation(value);
+    setCurrentValue(value);
+  }, [value]);
   
-  // Handle mouse events for dragging
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || disabled) return;
+  const gestureHandler = useAnimatedGestureHandler({
+    onStart: (_, context) => {
+      context.startRotation = rotation.value;
+    },
+    onActive: (event, context) => {
+      if (disabled) return;
       
-      const deltaY = startY - e.clientY;
-      const sensitivity = 0.5; // Adjust for sensitivity
-      const deltaValue = deltaY * sensitivity * ((max - min) / 100);
+      const deltaY = -event.translationY;
+      const sensitivity = 0.5;
+      const deltaRotation = deltaY * sensitivity;
       
-      // Calculate new value with step
-      let newValue = Math.min(max, Math.max(min, startValue + deltaValue));
+      const newRotation = Math.max(-135, Math.min(135, context.startRotation + deltaRotation));
+      rotation.value = newRotation;
+      
+      // Convert rotation back to value
+      const percentage = (newRotation + 135) / 270;
+      let newValue = min + percentage * (max - min);
       
       // Round to nearest step
       if (step !== 0) {
         newValue = Math.round(newValue / step) * step;
       }
       
-      onChange(newValue);
-    };
-    
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-    
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, startY, startValue, min, max, step, onChange, disabled]);
+      newValue = Math.max(min, Math.min(max, newValue));
+      
+      runOnJS(setCurrentValue)(newValue);
+      runOnJS(onChange)(newValue);
+    },
+  });
   
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (disabled) return;
-    
-    setIsDragging(true);
-    setStartY(e.clientY);
-    setStartValue(value);
-  };
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }],
+    };
+  });
   
   // Format the display value
-  const displayValue = valueDisplay ? valueDisplay(value) : value.toFixed(step < 1 ? 1 : 0);
+  const displayValue = valueDisplay ? valueDisplay(currentValue) : currentValue.toFixed(step < 1 ? 1 : 0);
   
   return (
-    <div className="flex flex-col items-center">
-      {label && <span className="text-xs text-dark-300 mb-1">{label}</span>}
+    <View style={styles.container}>
+      {label && <Text style={styles.label}>{label}</Text>}
       
-      <div 
-        ref={knobRef}
-        className={`knob ${disabled ? 'opacity-50' : 'hover:border-primary-500'}`}
-        onMouseDown={handleMouseDown}
-        style={{ cursor: disabled ? 'not-allowed' : 'ns-resize' }}
-      >
-        <div 
-          className="knob-indicator" 
-          style={{ transform: `translateX(-50%) rotate(${rotation}deg)` }}
-        />
-        <span className="text-xs font-medium">{displayValue}{unit}</span>
-      </div>
-    </div>
+      <PanGestureHandler onGestureEvent={gestureHandler}>
+        <Animated.View style={[styles.knob, disabled && styles.disabled]}>
+          <Animated.View style={[styles.indicator, animatedStyle]} />
+          <Text style={styles.valueText}>{displayValue}{unit}</Text>
+        </Animated.View>
+      </PanGestureHandler>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+  },
+  label: {
+    fontSize: 12,
+    color: colors.dark[300],
+    marginBottom: 4,
+  },
+  knob: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.dark[800],
+    borderWidth: 2,
+    borderColor: colors.dark[600],
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  indicator: {
+    position: 'absolute',
+    top: -2,
+    width: 4,
+    height: 16,
+    backgroundColor: colors.primary[500],
+    borderRadius: 2,
+  },
+  valueText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
+  },
+});
 
 export default Knob;

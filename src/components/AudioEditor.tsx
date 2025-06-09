@@ -1,150 +1,150 @@
 import React, { useEffect, useRef } from 'react';
-import WaveSurfer from 'wavesurfer.js';
-import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
-import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.js';
+import { View, StyleSheet, Dimensions } from 'react-native';
+import { Canvas, Path, Skia, useCanvasRef } from '@shopify/react-native-skia';
 import { useAudio } from '../contexts/AudioContext';
+import { colors } from '../styles/colors';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const AudioEditor: React.FC = () => {
   const { 
     audioFile, 
     audioBuffer, 
     isPlaying, 
-    togglePlayback, 
     currentTime, 
     seekTo,
     selectedRegion,
-    setSelectedRegion,
     zoom,
   } = useAudio();
   
-  const waveformRef = useRef<HTMLDivElement>(null);
-  const wavesurferRef = useRef<WaveSurfer | null>(null);
-  const regionsPluginRef = useRef<any>(null);
-
-  // Initialize WaveSurfer when component mounts
+  const canvasRef = useCanvasRef();
+  const waveformData = useRef<number[]>([]);
+  
+  // Generate waveform data from audio buffer
   useEffect(() => {
-    if (waveformRef.current && !wavesurferRef.current) {
-      regionsPluginRef.current = RegionsPlugin.create();
+    if (audioBuffer) {
+      const channelData = audioBuffer.getChannelData(0);
+      const samples = Math.floor(channelData.length / (screenWidth * zoom));
+      const newWaveformData: number[] = [];
       
-      const timelinePlugin = TimelinePlugin.create({
-        height: 20,
-        timeInterval: 0.5,
-        primaryLabelInterval: 5,
-        secondaryLabelInterval: 1,
-      });
-      
-      wavesurferRef.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: '#93C5FD',
-        progressColor: '#2C7BF2',
-        cursorColor: '#7B68EE',
-        height: 128,
-        normalize: true,
-        minPxPerSec: 50,
-        plugins: [regionsPluginRef.current, timelinePlugin],
-      });
-      
-      // Handle clicks on the waveform
-      wavesurferRef.current.on('click', (timestamp) => {
-        seekTo(timestamp);
-      });
-      
-      // Handle region updates
-      regionsPluginRef.current.on('region-created', (region: any) => {
-        setSelectedRegion({
-          start: region.start,
-          end: region.end,
-        });
-      });
-      
-      regionsPluginRef.current.on('region-updated', (region: any) => {
-        setSelectedRegion({
-          start: region.start,
-          end: region.end,
-        });
-      });
-    }
-    
-    return () => {
-      if (wavesurferRef.current) {
-        try {
-          wavesurferRef.current.destroy();
-        } catch (error) {
-          // Ignore AbortError during cleanup as it's expected
-          if (!(error instanceof Error) || error.name !== 'AbortError') {
-            console.error('Error destroying WaveSurfer instance:', error);
-          }
+      for (let i = 0; i < screenWidth * zoom; i++) {
+        const start = Math.floor(i * samples);
+        const end = Math.floor((i + 1) * samples);
+        let max = 0;
+        
+        for (let j = start; j < end && j < channelData.length; j++) {
+          max = Math.max(max, Math.abs(channelData[j]));
         }
-        wavesurferRef.current = null;
+        
+        newWaveformData.push(max);
       }
-    };
-  }, []);
-  
-  // Load audio file when it changes
-  useEffect(() => {
-    if (audioFile && wavesurferRef.current) {
-      const fileURL = URL.createObjectURL(audioFile);
-      wavesurferRef.current.load(fileURL);
       
-      // Cleanup URL when done
-      return () => {
-        URL.revokeObjectURL(fileURL);
-      };
+      waveformData.current = newWaveformData;
     }
-  }, [audioFile]);
+  }, [audioBuffer, zoom]);
   
-  // Update zoom level
-  useEffect(() => {
-    if (wavesurferRef.current) {
-      wavesurferRef.current.zoom(zoom * 50);
-    }
-  }, [zoom]);
-  
-  // Handle playback state changes
-  useEffect(() => {
-    if (!wavesurferRef.current) return;
+  // Create waveform path
+  const createWaveformPath = () => {
+    const path = Skia.Path.Make();
+    const height = 128;
+    const centerY = height / 2;
     
-    if (isPlaying) {
-      wavesurferRef.current.play();
-    } else {
-      wavesurferRef.current.pause();
-    }
-  }, [isPlaying]);
-  
-  // Update cursor position
-  useEffect(() => {
-    if (wavesurferRef.current && !isPlaying) {
-      wavesurferRef.current.setTime(currentTime);
-    }
-  }, [currentTime, isPlaying]);
-  
-  // Create or update region when selectedRegion changes
-  useEffect(() => {
-    if (!wavesurferRef.current || !regionsPluginRef.current) return;
+    if (waveformData.current.length === 0) return path;
     
-    // Clear all existing regions
-    regionsPluginRef.current.clearRegions();
+    path.moveTo(0, centerY);
     
-    // Create new region if selected
-    if (selectedRegion) {
-      regionsPluginRef.current.addRegion({
-        start: selectedRegion.start,
-        end: selectedRegion.end,
-        color: 'rgba(123, 104, 238, 0.2)',
-        drag: true,
-        resize: true,
-      });
+    waveformData.current.forEach((amplitude, index) => {
+      const x = (index / waveformData.current.length) * screenWidth;
+      const y = centerY - (amplitude * centerY * 0.8);
+      
+      if (index === 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    });
+    
+    // Mirror for bottom half
+    for (let i = waveformData.current.length - 1; i >= 0; i--) {
+      const amplitude = waveformData.current[i];
+      const x = (i / waveformData.current.length) * screenWidth;
+      const y = centerY + (amplitude * centerY * 0.8);
+      path.lineTo(x, y);
     }
-  }, [selectedRegion]);
+    
+    path.close();
+    return path;
+  };
+  
+  const waveformPath = createWaveformPath();
   
   return (
-    <div className="flex-1 p-4 overflow-y-auto">
-      <div 
-        ref={waveformRef} 
-        className="waveform-container p-2 rounded-md mb-4"
-      />
-    </div>
+    <View style={styles.container}>
+      <Canvas style={styles.canvas} ref={canvasRef}>
+        <Path
+          path={waveformPath}
+          color={colors.primary[300]}
+          style="fill"
+        />
+        
+        {/* Progress overlay */}
+        {audioBuffer && (
+          <Path
+            path={waveformPath}
+            color={colors.primary[500]}
+            style="fill"
+            opacity={0.7}
+          />
+        )}
+        
+        {/* Current time cursor */}
+        {audioBuffer && (
+          <Path
+            path={Skia.Path.Make().moveTo(
+              (currentTime / audioBuffer.duration) * screenWidth, 
+              0
+            ).lineTo(
+              (currentTime / audioBuffer.duration) * screenWidth, 
+              128
+            )}
+            color={colors.accent[500]}
+            style="stroke"
+            strokeWidth={2}
+          />
+        )}
+        
+        {/* Selected region */}
+        {selectedRegion && audioBuffer && (
+          <Path
+            path={Skia.Path.Make()
+              .addRect(Skia.XYWHRect(
+                (selectedRegion.start / audioBuffer.duration) * screenWidth,
+                0,
+                ((selectedRegion.end - selectedRegion.start) / audioBuffer.duration) * screenWidth,
+                128
+              ))}
+            color={colors.accent[500]}
+            style="fill"
+            opacity={0.3}
+          />
+        )}
+      </Canvas>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  canvas: {
+    height: 128,
+    backgroundColor: colors.dark[800],
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.dark[700],
+  },
+});
 
 export default AudioEditor;

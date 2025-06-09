@@ -1,7 +1,11 @@
 import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAudio } from '../contexts/AudioContext';
 import { formatTime } from '../utils/formatTime';
-import { Scissors, Trash2 } from 'lucide-react';
+import { colors } from '../styles/colors';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const Timeline: React.FC = () => {
   const { 
@@ -14,22 +18,9 @@ const Timeline: React.FC = () => {
     audioBuffer,
   } = useAudio();
 
-  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!audioBuffer) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const percentage = offsetX / rect.width;
-    const time = percentage * duration;
-    
-    seekTo(time);
-  };
-
   const handleCreateRegion = () => {
-    // Create a region starting from current position and extending 5 seconds (or to the end)
     const start = currentTime;
     const end = Math.min(currentTime + 5, duration);
-    
     setSelectedRegion({ start, end });
   };
 
@@ -38,74 +29,168 @@ const Timeline: React.FC = () => {
   };
 
   return (
-    <div className="bg-dark-800 border-t border-dark-700 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex space-x-2">
-          <button 
-            onClick={handleCreateRegion}
+    <View style={styles.container}>
+      <View style={styles.controls}>
+        <View style={styles.leftControls}>
+          <TouchableOpacity 
+            onPress={handleCreateRegion}
             disabled={!audioBuffer || isPlaying}
-            className={`btn btn-secondary flex items-center space-x-1 ${!audioBuffer || isPlaying ? 'opacity-50 cursor-not-allowed' : ''}`}
+            style={[styles.button, (!audioBuffer || isPlaying) && styles.buttonDisabled]}
           >
-            <Scissors size={16} />
-            <span>Create Region</span>
-          </button>
+            <Ionicons name="cut" size={16} color={colors.white} />
+            <Text style={styles.buttonText}>Create Region</Text>
+          </TouchableOpacity>
           
           {selectedRegion && (
-            <button 
-              onClick={handleClearRegion}
-              className="btn btn-secondary flex items-center space-x-1"
+            <TouchableOpacity 
+              onPress={handleClearRegion}
+              style={styles.button}
             >
-              <Trash2 size={16} />
-              <span>Clear Region</span>
-            </button>
+              <Ionicons name="trash" size={16} color={colors.white} />
+              <Text style={styles.buttonText}>Clear Region</Text>
+            </TouchableOpacity>
           )}
-        </div>
+        </View>
         
-        <div className="text-sm font-mono">
+        <Text style={styles.timeDisplay}>
           {formatTime(currentTime)} / {formatTime(duration)}
-        </div>
-      </div>
+        </Text>
+      </View>
       
-      <div 
-        className="h-10 bg-dark-700 rounded-md relative cursor-pointer"
-        onClick={handleTimelineClick}
-      >
+      <View style={styles.timeline}>
         {/* Progress bar */}
-        <div 
-          className="absolute top-0 left-0 h-full bg-primary-500/30 rounded-md"
-          style={{ width: `${(currentTime / duration) * 100}%` }}
+        <View 
+          style={[
+            styles.progress,
+            { width: `${(currentTime / duration) * 100}%` }
+          ]}
         />
         
         {/* Playhead */}
-        <div 
-          className="absolute top-0 h-full w-px bg-primary-500 z-10"
-          style={{ left: `${(currentTime / duration) * 100}%` }}
+        <View 
+          style={[
+            styles.playhead,
+            { left: `${(currentTime / duration) * 100}%` }
+          ]}
         >
-          <div className="w-3 h-3 rounded-full bg-primary-500 -ml-1.5 -mt-1"></div>
-        </div>
+          <View style={styles.playheadHandle} />
+        </View>
         
         {/* Selected region */}
         {selectedRegion && (
-          <div 
-            className="absolute top-0 h-full bg-accent-500/30 border-l border-r border-accent-500"
-            style={{ 
-              left: `${(selectedRegion.start / duration) * 100}%`,
-              width: `${((selectedRegion.end - selectedRegion.start) / duration) * 100}%`
-            }}
+          <View 
+            style={[
+              styles.region,
+              { 
+                left: `${(selectedRegion.start / duration) * 100}%`,
+                width: `${((selectedRegion.end - selectedRegion.start) / duration) * 100}%`
+              }
+            ]}
           />
         )}
         
         {/* Time markers */}
         {[...Array(10)].map((_, i) => (
-          <div 
+          <View 
             key={i}
-            className="absolute top-0 h-2 w-px bg-dark-500"
-            style={{ left: `${(i + 1) * 10}%` }}
+            style={[
+              styles.marker,
+              { left: `${(i + 1) * 10}%` }
+            ]}
           />
         ))}
-      </div>
-    </div>
+      </View>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: colors.dark[800],
+    borderTopWidth: 1,
+    borderTopColor: colors.dark[700],
+    padding: 16,
+  },
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  leftControls: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.dark[700],
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    gap: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  timeDisplay: {
+    fontSize: 14,
+    fontFamily: 'monospace',
+    color: colors.white,
+  },
+  timeline: {
+    height: 40,
+    backgroundColor: colors.dark[700],
+    borderRadius: 6,
+    position: 'relative',
+  },
+  progress: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    backgroundColor: colors.primary[500],
+    opacity: 0.3,
+    borderRadius: 6,
+  },
+  playhead: {
+    position: 'absolute',
+    top: 0,
+    height: '100%',
+    width: 2,
+    backgroundColor: colors.primary[500],
+    zIndex: 10,
+  },
+  playheadHandle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary[500],
+    marginLeft: -5,
+    marginTop: -4,
+  },
+  region: {
+    position: 'absolute',
+    top: 0,
+    height: '100%',
+    backgroundColor: colors.accent[500],
+    opacity: 0.3,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: colors.accent[500],
+  },
+  marker: {
+    position: 'absolute',
+    top: 0,
+    height: 8,
+    width: 1,
+    backgroundColor: colors.dark[500],
+  },
+});
 
 export default Timeline;
