@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Editor — {{ settings.app_name }}{% endblock %}
+{% block body %}
+<div class="layout">
+  <header class="header">
+    <div class="header-left">
+      <span class="logo">&#9835;</span>
+      <strong>{{ settings.app_name }}</strong>
+      <span class="muted small">session {{ session_id[:8] }}…</span>
+    </div>
+    <div class="header-right" id="header-controls-mount">
+      {% include "partials/header_controls.html" %}
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="main">
+      {% if not meta %}
+      <div class="empty-state">
+        <h2>Import audio</h2>
+        <p class="muted">WAV, FLAC, OGG, AIFF, or MP3 (requires libsndfile / codec support).</p>
+        <form action="/editor/{{ session_id }}/upload" method="post" enctype="multipart/form-data">
+          <input type="file" name="file" accept="audio/*" required />
+          <button type="submit" class="btn btn-secondary">Upload</button>
+        </form>
+      </div>
+      {% else %}
+      <section class="waveform-section">
+        <canvas id="waveform" width="900" height="128" data-session="{{ session_id }}"></canvas>
+        <div id="timeline-mount">
+          {% include "partials/timeline_panel.html" %}
+        </div>
+        <audio id="player" controls preload="metadata" src="/api/sessions/{{ session_id }}/source"></audio>
+      </section>
+      {% endif %}
+    </div>
+    <aside class="sidebar">
+      {% if meta %}
+      <div class="sidebar-section">
+        <h3>Controls</h3>
+        <label class="muted small">Zoom (waveform detail)</label>
+        <div class="stack">
+          <input type="range" id="zoom-slider" min="0.25" max="4" step="0.05" value="{{ state.zoom }}" />
+        </div>
+      </div>
+      <div id="effects-mount">
+        {% include "partials/effects_panel.html" %}
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+</div>
+
+{% if meta %}
+<script id="waveform-data" type="application/json">{{ waveform_json | safe }}</script>
+<script id="editor-config" type="application/json">{{ {"session_id": session_id } | tojson }}</script>
+<script src="/static/js/editor.js"></script>
+{% endif %}
+{% endblock %}

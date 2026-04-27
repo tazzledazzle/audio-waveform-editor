@@ -1,0 +1,55 @@
+<form class="effects-form stack"
+      hx-post="/editor/{{ session_id }}/htmx/effects"
+      hx-target="#effects-mount"
+      hx-swap="innerHTML"
+      hx-trigger="change delay:200ms from:input, change from:input[type='checkbox']">
+  <h3>Effects</h3>
+
+  <div class="effect-card">
+    <label class="row">
+      <input type="checkbox" name="compression" value="1" {% if state.effects.compression %}checked{% endif %} />
+      <span>Compressor</span>
+    </label>
+    <div class="knobs">
+      <label>Threshold (dB)
+        <input type="number" name="threshold_db" step="0.5" value="{{ state.effects.compression_params.threshold_db }}" />
+      </label>
+      <label>Ratio
+        <input type="number" name="ratio" step="0.1" value="{{ state.effects.compression_params.ratio }}" />
+      </label>
+    </div>
+  </div>
+
+  <div class="effect-card">
+    <label class="row">
+      <input type="checkbox" name="reverb" value="1" {% if state.effects.reverb %}checked{% endif %} />
+      <span>Reverb</span>
+    </label>
+    <div class="knobs">
+      <label>Decay (s)
+        <input type="number" name="decay" step="0.1" value="{{ state.effects.reverb_params.decay_sec }}" />
+      </label>
+      <label>Mix (0–1)
+        <input type="number" name="wet" step="0.01" min="0" max="1" value="{{ state.effects.reverb_params.wet }}" />
+      </label>
+    </div>
+  </div>
+
+  <div class="effect-card">
+    <label class="row">
+      <input type="checkbox" name="eq" value="1" {% if state.effects.eq %}checked{% endif %} />
+      <span>EQ</span>
+    </label>
+    <div class="knobs">
+      <label>Low (dB)
+        <input type="number" name="low" step="0.5" value="{{ state.effects.eq_params.low_db }}" />
+      </label>
+      <label>Mid (dB)
+        <input type="number" name="mid" step="0.5" value="{{ state.effects.eq_params.mid_db }}" />
+      </label>
+      <label>High (dB)
+        <input type="number" name="high" step="0.5" value="{{ state.effects.eq_params.high_db }}" />
+      </label>
+    </div>
+  </div>
+</form>

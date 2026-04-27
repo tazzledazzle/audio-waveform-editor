@@ -1,0 +1,30 @@
+{% if meta %}
+<div class="timeline-wrap" id="timeline-panel" data-duration="{{ meta.duration_sec }}">
+  <div class="timeline-toolbar">
+    <form id="timeline-form" class="inline"
+          hx-post="/editor/{{ session_id }}/htmx/region"
+          hx-target="#timeline-mount"
+          hx-swap="innerHTML">
+      <input type="hidden" name="action" value="create" />
+      <input type="hidden" name="start_sec" id="region_start_sec" value="{{ state.current_time_sec }}" />
+      <button type="submit" class="btn btn-secondary">Create region</button>
+    </form>
+    <form class="inline"
+          hx-post="/editor/{{ session_id }}/htmx/region"
+          hx-target="#timeline-mount"
+          hx-swap="innerHTML">
+      <input type="hidden" name="action" value="clear" />
+      <button type="submit" class="btn btn-secondary" {% if not state.selected_region %}disabled{% endif %}>Clear region</button>
+    </form>
+    <span class="mono time-readout" id="time-readout">{{ "%.1f"|format(state.current_time_sec) }} / {{ "%.1f"|format(meta.duration_sec) }}</span>
+  </div>
+  <div class="timeline" id="timeline-bar" data-duration="{{ meta.duration_sec }}">
+    <div class="timeline-progress" id="timeline-progress" style="width: {{ (100 * state.current_time_sec / meta.duration_sec) if meta.duration_sec > 0 else 0 }}%;"></div>
+    <div class="timeline-playhead" id="timeline-playhead" style="left: {{ (100 * state.current_time_sec / meta.duration_sec) if meta.duration_sec > 0 else 0 }}%;"></div>
+    {% if state.selected_region %}
+    <div class="timeline-region"
+         style="left: {{ 100 * state.selected_region.start_sec / meta.duration_sec }}%; width: {{ 100 * (state.selected_region.end_sec - state.selected_region.start_sec) / meta.duration_sec }}%;"></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="landing">
+  <h1>{{ settings.app_name }}</h1>
+  <p class="muted">Server-rendered waveform editor with FastAPI. Upload audio, edit regions and effects, then export processed WAV.</p>
+  <button type="button" class="btn btn-primary" id="start-btn">Start editor</button>
+  <p class="small muted">Creates a new session in your browser.</p>
+</main>
+<script>
+  document.getElementById('start-btn').addEventListener('click', async () => {
+    const r = await fetch('/api/sessions', { method: 'POST' });
+    if (!r.ok) { alert('Could not create session'); return; }
+    const j = await r.json();
+    window.location.href = '/editor/' + j.session_id;
+  });
+</script>
+{% endblock %}
